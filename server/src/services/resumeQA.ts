@@ -160,7 +160,7 @@ export async function answerFromResume(input: AskInput): Promise<AskResult> {
       "Answer using ONLY this text; if the answer is not in these excerpts, say it is not in the retrieved excerpts " +
       "(do not guess from unstated resume content).\n\n"
     : "The full resume text is below. ";
-
+// if i change this prompt tp generalized convsation then it will convert to regular model behavour like chatgpt
   const prompt =
     "You answer questions using ONLY the resume material below (nothing else). " +
     "If the material does not contain the answer, say clearly that it is not stated there. " +

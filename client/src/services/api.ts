@@ -37,8 +37,14 @@ function apiUrl(path: string): string {
 }
 
 async function apiFetch(url: string, init: RequestInit): Promise<Response> {
+  const token = localStorage.getItem('token');
+  const headers = {
+    ...init.headers,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
   try {
-    return await fetch(url, init);
+    return await fetch(url, { ...init, headers });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "Network error";
     throw new Error(

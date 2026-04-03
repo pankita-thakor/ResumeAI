@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import multer from "multer";
 import { indexResumeToPinecone } from "../services/resumeEmbeddings.js";
 import { extractTextFromPdf } from "../services/pdfText.js";
+import { auth, type AuthRequest } from "../middleware/auth.js";
 
 export const resumeRouter = Router();
 
@@ -25,10 +26,10 @@ const upload = multer({
 });
 
 function asyncRoute(
-  handler: (req: Request, res: Response, next: NextFunction) => Promise<void>
+  handler: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>
 ) {
   return (req: Request, res: Response, next: NextFunction) => {
-    void handler(req, res, next).catch(next);
+    void handler(req as AuthRequest, res, next).catch(next);
   };
 }
 
@@ -41,14 +42,17 @@ function requireGemini(): GoogleGenAI {
 }
 
 /**
- * POST /api/resume/index — body: { resumeText }
+ * POST /api/resume/index — body: { resumeText, name }
  * Chunk + embed + Pinecone upsert + session; returns { resumeId, segmentCount, embeddingModel }.
  */
 resumeRouter.post(
   "/index",
+  auth,
   asyncRoute(async (req, res, next) => {
     const resumeText =
       typeof req.body?.resumeText === "string" ? req.body.resumeText : "";
+    const name = typeof req.body?.name === "string" ? req.body.name : "Untitled Resume";
+    
     if (!resumeText.trim()) {
       res.status(400).json({ error: "resumeText is required." });
       return;
@@ -57,6 +61,15 @@ resumeRouter.post(
     try {
       const ai = requireGemini();
       const out = await indexResumeToPinecone(ai, resumeText);
+      
+      // Save to user
+      const user = req.user;
+      const alreadyExists = user.resumes.some((r: any) => r.resumeId === out.resumeId);
+      if (!alreadyExists) {
+        user.resumes.push({ resumeId: out.resumeId, name });
+        await user.save();
+      }
+      
       res.json(out);
     } catch (err) {
       next(err);
@@ -70,6 +83,7 @@ resumeRouter.post(
  */
 resumeRouter.post(
   "/upload-pdf",
+  auth,
   (req, res, next) => {
     upload.single("resumePdf")(req, res, (err: unknown) => {
       if (err instanceof multer.MulterError) {
@@ -105,6 +119,16 @@ resumeRouter.post(
       }
       const ai = requireGemini();
       const out = await indexResumeToPinecone(ai, resumeText);
+      
+      // Save to user
+      const user = req.user;
+      const name = file.originalname || "Uploaded PDF";
+      const alreadyExists = user.resumes.some((r: any) => r.resumeId === out.resumeId);
+      if (!alreadyExists) {
+        user.resumes.push({ resumeId: out.resumeId, name });
+        await user.save();
+      }
+
       res.json(out);
     } catch (err) {
       next(err);

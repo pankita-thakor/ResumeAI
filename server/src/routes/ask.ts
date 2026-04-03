@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { answerFromResume } from "../services/resumeQA.js";
 import { extractTextFromPdf } from "../services/pdfText.js";
+import { auth, type AuthRequest } from "../middleware/auth.js";
 
 export const askRouter = Router();
 
@@ -24,15 +25,16 @@ const upload = multer({
 });
 
 function asyncRoute(
-  handler: (req: Request, res: Response, next: NextFunction) => Promise<void>
+  handler: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>
 ) {
   return (req: Request, res: Response, next: NextFunction) => {
-    void handler(req, res, next).catch(next);
+    void handler(req as AuthRequest, res, next).catch(next);
   };
 }
 
 askRouter.post(
   "/ask",
+  auth,
   asyncRoute(async (req, res, next) => {
     const body = req.body as {
       resumeText?: string;
@@ -90,6 +92,7 @@ askRouter.post(
 
 askRouter.post(
   "/ask-pdf",
+  auth,
   (req, res, next) => {
     upload.single("resumePdf")(req, res, (err: unknown) => {
       if (err instanceof multer.MulterError) {
