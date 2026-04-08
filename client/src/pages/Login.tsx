@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { apiUrl } from '../services/apiBase';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -11,12 +12,10 @@ const Login: React.FC = () => {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
 
-  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
+      const res = await axios.post(apiUrl('/api/auth/login'), { email, password });
       login(res.data.token, res.data.user);
       showNotification('Successfully logged in!', 'success');
       navigate('/');

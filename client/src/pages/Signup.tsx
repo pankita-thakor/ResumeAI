@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { apiUrl } from '../services/apiBase';
 
 const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -12,15 +13,13 @@ const Signup: React.FC = () => {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
 
-  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       return showNotification('Passwords do not match', 'error');
     }
     try {
-      const res = await axios.post(`${API_URL}/auth/signup`, {
+      const res = await axios.post(apiUrl('/api/auth/signup'), {
         email: email.trim().toLowerCase(),
         password,
       });

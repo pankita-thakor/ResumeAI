@@ -24,17 +24,7 @@ export type AskResponse = {
 };
 
 export type AskError = { error: string };
-
-/**
- * Use relative `/api/...` in dev so the Vite dev server proxies to the API (same origin — no CORS,
- * no wrong host/port). Set `VITE_API_URL` only when the API is on another origin.
- */
-function apiUrl(path: string): string {
-  const trimmed = path.startsWith("/") ? path : `/${path}`;
-  const fromEnv = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
-  if (fromEnv) return `${fromEnv.replace(/\/$/, "")}${trimmed}`;
-  return trimmed;
-}
+import { apiUrl } from "./apiBase";
 
 async function apiFetch(url: string, init: RequestInit): Promise<Response> {
   const token = localStorage.getItem('token');

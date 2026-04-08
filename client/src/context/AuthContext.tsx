@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { apiUrl } from '../services/apiBase';
 
 interface User {
   id: string;
@@ -24,12 +25,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
-  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
-
   const fetchMe = async () => {
     if (token) {
       try {
-        const res = await axios.get(`${API_URL}/auth/me`, {
+        const res = await axios.get(apiUrl('/api/auth/me'), {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data.user);
@@ -44,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     fetchMe();
-  }, [token, API_URL]);
+  }, [token]);
 
   const login = (newToken: string, newUser: User) => {
     localStorage.setItem('token', newToken);
