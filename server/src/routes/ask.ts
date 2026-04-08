@@ -63,6 +63,7 @@ askRouter.post(
         const { answer, meta } = await answerFromResume({
           resumeId,
           question,
+          userLibrary: req.user.resumes.map((r: any) => ({ name: r.name })),
         });
         res.json({ answer, meta });
       } catch (err) {
@@ -82,6 +83,7 @@ askRouter.post(
       const { answer, meta } = await answerFromResume({
         resumeText,
         question,
+        userLibrary: req.user.resumes.map((r: any) => ({ name: r.name })),
       });
       res.json({ answer, meta });
     } catch (err) {
@@ -136,6 +138,7 @@ askRouter.post(
       const { answer, meta } = await answerFromResume({
         resumeText,
         question,
+        userLibrary: req.user.resumes.map((r: any) => ({ name: r.name })),
       });
       res.json({ answer, meta });
     } catch (err) {

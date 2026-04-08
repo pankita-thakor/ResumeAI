@@ -11,8 +11,8 @@ import {
 } from "./resumeEmbeddings.js";
 
 export type AskInput =
-  | { resumeText: string; question: string }
-  | { resumeId: string; question: string };
+  | { resumeText: string; question: string; userLibrary?: Array<{ name: string }> }
+  | { resumeId: string; question: string; userLibrary?: Array<{ name: string }> };
 
 export type AskMeta = {
   usedEmbeddings: boolean;
@@ -154,14 +154,19 @@ export async function answerFromResume(input: AskInput): Promise<AskResult> {
       ? "(No resume text provided.)"
       : chunks.join("\n\n---\n\n");
 
+  const libraryNames = input.userLibrary?.map(r => r.name).join(", ") || "None";
+  const libraryContext = `User's resume library contains: [${libraryNames}]. 
+  If the user asks about how many resumes or candidates they have uploaded, use this information.`;
+
   const ragNote = usedRag
     ? "Below are ONLY the resume excerpts retrieved by embedding similarity to the question. " +
       "Other parts of the resume were not provided to you. " +
       "Answer using ONLY this text; if the answer is not in these excerpts, say it is not in the retrieved excerpts " +
       "(do not guess from unstated resume content).\n\n"
     : "The full resume text is below. ";
-// if i change this prompt tp generalized convsation then it will convert to regular model behavour like chatgpt
+
   const prompt =
+    `System Info: ${libraryContext}\n\n` +
     "You answer questions using ONLY the resume material below (nothing else). " +
     "If the material does not contain the answer, say clearly that it is not stated there. " +
     "Be concise and factual. Do not invent employers, dates, skills, or credentials.\n\n" +

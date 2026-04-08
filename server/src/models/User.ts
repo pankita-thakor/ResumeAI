@@ -22,6 +22,17 @@ const userSchema = new mongoose.Schema(
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
+    chatHistory: [
+      {
+        role: { type: String, enum: ["user", "assistant"], required: true },
+        content: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
+    chatSummary: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,

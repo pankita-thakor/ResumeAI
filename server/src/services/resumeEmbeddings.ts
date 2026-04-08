@@ -11,6 +11,7 @@ import {
   resumeTextNamespace,
 } from "./pineconeVectors.js";
 import { getResumeSession, putResumeSession } from "./resumeSessionStore.js";
+import { Resume } from "../models/Resume.js";
 import {
   computeRagTopK,
   finalizeRagChunks,
@@ -312,6 +313,18 @@ export async function indexResumeToPinecone(
   await ensureResumeVectorsInPinecone(resumeId, segments, segEmb.vectors, {
     force: true,
   });
+
+  // Persist segments to MongoDB so they can be recovered after server restart
+  try {
+    await Resume.findOneAndUpdate(
+      { resumeId },
+      { segments },
+      { upsert: true, new: true }
+    );
+  } catch (err) {
+    console.warn("[resumeAI] Failed to persist resume segments to MongoDB:", err);
+  }
+
   putResumeSession(resumeId, { segments });
 
   return {
@@ -331,7 +344,23 @@ export async function retrieveIndexedResumeContext(
   question: string
 ): Promise<RetrievedContext> {
   const trimmedId = resumeId.trim();
-  const session = getResumeSession(trimmedId);
+  let session = getResumeSession(trimmedId);
+
+  // If session is missing (e.g. server restart), try to recover from MongoDB
+  if (!session) {
+    console.info("[resumeAI] Session missing for %s; attempting recovery from MongoDB...", trimmedId);
+    try {
+      const doc = await Resume.findOne({ resumeId: trimmedId });
+      if (doc && doc.segments && doc.segments.length > 0) {
+        session = { segments: doc.segments };
+        putResumeSession(trimmedId, session);
+        console.info("[resumeAI] Session recovered for %s", trimmedId);
+      }
+    } catch (err) {
+      console.warn("[resumeAI] Failed to recover resume segments from MongoDB:", err);
+    }
+  }
+
   if (!session) {
     throw new Error(
       "Resume session not found or expired. Index the resume again (POST /api/resume/index or /api/resume/upload-pdf)."

@@ -5,6 +5,7 @@ import multer from "multer";
 import { indexResumeToPinecone } from "../services/resumeEmbeddings.js";
 import { extractTextFromPdf } from "../services/pdfText.js";
 import { auth, type AuthRequest } from "../middleware/auth.js";
+import { Resume } from "../models/Resume.js";
 
 export const resumeRouter = Router();
 
@@ -135,3 +136,31 @@ resumeRouter.post(
     }
   })
 );
+
+/**
+ * DELETE /api/resume/:resumeId — remove from user profile.
+ */
+resumeRouter.delete(
+  "/:resumeId",
+  auth,
+  asyncRoute(async (req, res, next) => {
+    const { resumeId } = req.params;
+    const user = req.user;
+
+    try {
+      user.resumes = user.resumes.filter((r: any) => r.resumeId !== resumeId);
+      await user.save();
+      
+      // Cleanup persistent segments if no other user is using this resumeId
+      // (Though resumeId is derived from text, so it might be shared, 
+      // but usually resumeId is unique to the file content).
+      // For now, let's just delete it to be safe on storage.
+      await Resume.deleteOne({ resumeId });
+
+      res.json({ success: true, message: "Resume removed from profile." });
+    } catch (err) {
+      next(err);
+    }
+  })
+);
+

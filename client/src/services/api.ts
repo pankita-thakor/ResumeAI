@@ -180,3 +180,48 @@ export async function askResumeById(
   });
   return parseAskResponse(res);
 }
+
+export async function deleteResume(resumeId: string): Promise<void> {
+  const res = await apiFetch(apiUrl(`/api/resume/${resumeId}`), {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const data = (await res.json()) as { error?: string };
+    throw new Error(data.error || "Delete failed");
+  }
+}
+
+export async function sendChatMessage(message: string): Promise<{ answer: string }> {
+  const res = await apiFetch(apiUrl("/api/chat"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) {
+    const data = (await res.json()) as { error?: string };
+    throw new Error(data.error || "Chat failed");
+  }
+  return res.json() as Promise<{ answer: string }>;
+}
+
+export async function getChatHistory(): Promise<{ history: any[], summary: string }> {
+  const res = await apiFetch(apiUrl("/api/chat/history"), {
+    method: "GET",
+  });
+  if (!res.ok) {
+    const data = (await res.json()) as { error?: string };
+    throw new Error(data.error || "Fetch history failed");
+  }
+  return res.json() as Promise<{ history: any[], summary: string }>;
+}
+
+export async function summarizeChat(): Promise<void> {
+  const res = await apiFetch(apiUrl("/api/chat/summarize"), {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const data = (await res.json()) as { error?: string };
+    throw new Error(data.error || "Summarize failed");
+  }
+}
+

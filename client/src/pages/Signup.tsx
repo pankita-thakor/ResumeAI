@@ -20,7 +20,10 @@ const Signup: React.FC = () => {
       return showNotification('Passwords do not match', 'error');
     }
     try {
-      const res = await axios.post(`${API_URL}/auth/signup`, { email, password });
+      const res = await axios.post(`${API_URL}/auth/signup`, {
+        email: email.trim().toLowerCase(),
+        password,
+      });
       signup(res.data.token, res.data.user);
       showNotification('Account created successfully!', 'success');
       navigate('/');

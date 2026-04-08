@@ -1,24 +1,25 @@
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   askResume,
   askResumeById,
   askResumeFromPdf,
   indexResumePdf,
   indexResumeText,
+  deleteResume,
   type AskMeta,
 } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
-import { LogOut, FileText, Plus } from "lucide-react";
+import { LogOut, FileText, Plus, Trash2 } from "lucide-react";
+import ChatWidget from "../components/ChatWidget";
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { showNotification } = useNotification();
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [resumeText, setResumeText] = useState("");
   const [resumePdf, setResumePdf] = useState<File | null>(null);
   const [resumeIndexedId, setResumeIndexedId] = useState<string | null>(null);
-  const [indexSegments, setIndexSegments] = useState<number | null>(null);
   const [indexNote, setIndexNote] = useState<string | null>(null);
   const [blocking, setBlocking] = useState(false);
   const [blockingMsg, setBlockingMsg] = useState("");
@@ -26,10 +27,14 @@ export default function Dashboard() {
   const [answer, setAnswer] = useState<string | null>(null);
   const [askMeta, setAskMeta] = useState<AskMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    resumeId: string;
+    name: string;
+  } | null>(null);
+  const [deleteWorking, setDeleteWorking] = useState(false);
 
   function clearIndexedState() {
     setResumeIndexedId(null);
-    setIndexSegments(null);
     setIndexNote(null);
   }
 
@@ -58,7 +63,6 @@ export default function Dashboard() {
     try {
       const out = await indexResumePdf(file);
       setResumeIndexedId(out.resumeId);
-      setIndexSegments(out.segmentCount);
       setIndexNote(
         `Ready: ${out.segmentCount} segments stored in Pinecone (${out.embeddingModel}).`
       );
@@ -100,7 +104,6 @@ export default function Dashboard() {
           const out = await indexResumeText(resumeText.trim());
           id = out.resumeId;
           setResumeIndexedId(out.resumeId);
-          setIndexSegments(out.segmentCount);
           setIndexNote(
             `Ready: ${out.segmentCount} segments in Pinecone (${out.embeddingModel}).`
           );
@@ -132,6 +135,31 @@ export default function Dashboard() {
     } finally {
       setBlocking(false);
       setBlockingMsg("");
+    }
+  }
+
+  useEffect(() => {
+    if (!pendingDelete) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !deleteWorking) setPendingDelete(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pendingDelete, deleteWorking]);
+
+  async function confirmDeleteResume() {
+    if (!pendingDelete) return;
+    setDeleteWorking(true);
+    try {
+      await deleteResume(pendingDelete.resumeId);
+      showNotification("Resume deleted", "success");
+      if (resumeIndexedId === pendingDelete.resumeId) clearIndexedState();
+      await refreshUser();
+      setPendingDelete(null);
+    } catch {
+      showNotification("Delete failed", "error");
+    } finally {
+      setDeleteWorking(false);
     }
   }
 
@@ -176,9 +204,11 @@ export default function Dashboard() {
             <h3>Your Resumes</h3>
             <div className="resume-list">
               {user?.resumes.map((r) => (
-                <div 
-                  key={r.resumeId} 
-                  className={`resume-item ${resumeIndexedId === r.resumeId ? 'active' : ''}`}
+                <div
+                  key={r.resumeId}
+                  className={`resume-item ${
+                    resumeIndexedId === r.resumeId ? "active" : ""
+                  }`}
                   onClick={() => {
                     setResumeIndexedId(r.resumeId);
                     setResumeText("");
@@ -188,8 +218,23 @@ export default function Dashboard() {
                     setIndexNote(`Selected: ${r.name}`);
                   }}
                 >
-                  <FileText size={16} />
-                  <span>{r.name}</span>
+                  <div className="resume-item-main">
+                    <FileText size={16} className="resume-item-icon" aria-hidden />
+                    <span className="resume-item-name" title={r.name}>
+                      {r.name}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="delete-btn"
+                    title={`Delete ${r.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPendingDelete({ resumeId: r.resumeId, name: r.name });
+                    }}
+                  >
+                    <Trash2 size={14} aria-hidden />
+                  </button>
                 </div>
               ))}
               <div 
@@ -353,6 +398,53 @@ export default function Dashboard() {
           </div>
         </main>
       </div>
+
+      {pendingDelete && (
+        <div
+          className="delete-modal-backdrop"
+          role="presentation"
+          onClick={() => !deleteWorking && setPendingDelete(null)}
+        >
+          <div
+            className="delete-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="delete-modal-title" className="delete-modal-title">
+              Remove resume?
+            </h2>
+            <p className="delete-modal-body">
+              This removes{" "}
+              <strong className="delete-modal-filename">
+                {pendingDelete.name}
+              </strong>{" "}
+              from your list. You can upload or index it again later.
+            </p>
+            <div className="delete-modal-actions">
+              <button
+                type="button"
+                className="delete-modal-btn delete-modal-btn--cancel"
+                disabled={deleteWorking}
+                onClick={() => setPendingDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="delete-modal-btn delete-modal-btn--danger"
+                disabled={deleteWorking}
+                onClick={() => void confirmDeleteResume()}
+              >
+                {deleteWorking ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ChatWidget />
     </div>
   );
 }

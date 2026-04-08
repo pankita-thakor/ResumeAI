@@ -13,6 +13,7 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   signup: (token: string, user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   loading: boolean;
 }
 
@@ -25,22 +26,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
 
-  useEffect(() => {
-    const fetchMe = async () => {
-      if (token) {
-        try {
-          const res = await axios.get(`${API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setUser(res.data.user);
-        } catch (err) {
-          localStorage.removeItem('token');
-          setToken(null);
-          setUser(null);
-        }
+  const fetchMe = async () => {
+    if (token) {
+      try {
+        const res = await axios.get(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(res.data.user);
+      } catch (err) {
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
       }
-      setLoading(false);
-    };
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchMe();
   }, [token, API_URL]);
 
@@ -62,8 +64,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    await fetchMe();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, signup, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, signup, logout, refreshUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

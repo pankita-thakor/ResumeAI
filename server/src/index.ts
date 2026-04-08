@@ -6,6 +6,7 @@ import { askRouter } from "./routes/ask.js";
 import { resumeRouter } from "./routes/resume.js";
 import { systemRouter } from "./routes/system.js";
 import { authRouter } from "./routes/auth.js";
+import { chatRouter } from "./routes/chat.js";
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
@@ -14,7 +15,7 @@ const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/resumeai"
 app.use(
   cors({
     origin: true,
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "OPTIONS", "DELETE"],
   })
 );
 app.use(express.json({ limit: "2mb" }));
@@ -23,6 +24,8 @@ app.use("/api/auth", authRouter);
 app.use("/api", systemRouter);
 app.use("/api/resume", resumeRouter);
 app.use("/api", askRouter);
+app.use("/api/chat", chatRouter);
+
 
 app.use(
   (

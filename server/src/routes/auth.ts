@@ -8,10 +8,20 @@ export const authRouter = Router();
 // Signup
 authRouter.post("/signup", async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    
+    const rawEmail = req.body?.email;
+    const rawPassword = req.body?.password;
+    const email =
+      typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
+    const password = typeof rawPassword === "string" ? rawPassword : "";
+
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 6 characters" });
     }
 
     const existingUser = await User.findOne({ email });
@@ -20,7 +30,20 @@ authRouter.post("/signup", async (req, res, next) => {
     }
 
     const user = new User({ email, password });
-    await user.save();
+    try {
+      await user.save();
+    } catch (saveErr: unknown) {
+      const anyErr = saveErr as { code?: number; name?: string; message?: string };
+      if (anyErr.code === 11000) {
+        return res.status(400).json({ error: "Email already in use" });
+      }
+      if (anyErr.name === "ValidationError") {
+        return res.status(400).json({
+          error: anyErr.message || "Invalid signup data",
+        });
+      }
+      throw saveErr;
+    }
 
     const token = jwt.sign(
       { id: user._id },
@@ -42,8 +65,15 @@ authRouter.post("/signup", async (req, res, next) => {
 // Login
 authRouter.post("/login", async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    
+    const rawEmail = req.body?.email;
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const email =
+      typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: "Invalid login credentials" });
