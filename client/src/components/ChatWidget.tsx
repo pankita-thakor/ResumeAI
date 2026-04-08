@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, Loader2, Bot, Trash2, RefreshCcw } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Bot, RefreshCcw } from 'lucide-react';
 import { sendChatMessage, getChatHistory, summarizeChat } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
