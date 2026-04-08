@@ -37,6 +37,9 @@ const Login: React.FC = () => {
           <label>Password</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
+        <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '10px' }}>
+          <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>Forgot Password?</Link>
+        </div>
         <button type="submit">Login</button>
         <p>Don't have an account? <Link to="/signup">Signup</Link></p>
       </form>

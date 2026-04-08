@@ -1,5 +1,6 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { User } from "../models/User.js";
 import { auth, type AuthRequest } from "../middleware/auth.js";
 
@@ -106,6 +107,71 @@ authRouter.get("/me", auth, async (req: AuthRequest, res, next) => {
     res.json({ user: { email: req.user.email, id: req.user._id, resumes: req.user.resumes } });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch user data" });
+  }
+});
+
+// Forgot password
+authRouter.post("/forgot-password", async (req, res) => {
+  try {
+    const rawEmail = req.body?.email;
+    const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // For security, don't confirm if user exists or not
+      return res.json({ message: "If that email exists, a reset link has been sent (check console for link)" });
+    }
+
+    const token = crypto.randomBytes(20).toString("hex");
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
+
+    await user.save();
+
+    // In a real app, send an email. For this demo, we log it.
+    const resetUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password/${token}`;
+    console.log(`[PASSWORD RESET LINK]: ${resetUrl}`);
+
+    res.json({ message: "If that email exists, a reset link has been sent (check console for link)" });
+  } catch (err) {
+    console.error("[Forgot Password Error]", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Reset password
+authRouter.post("/reset-password/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "Password reset token is invalid or has expired" });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.json({ message: "Password has been reset successfully" });
+  } catch (err) {
+    console.error("[Reset Password Error]", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
