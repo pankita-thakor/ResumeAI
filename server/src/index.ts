@@ -1,5 +1,5 @@
 import "./loadEnv.js";
-import cors from "cors";
+import cors, { type CorsOptions } from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
 import mongoose from "mongoose";
 import { askRouter } from "./routes/ask.js";
@@ -12,12 +12,37 @@ const app = express();
 const port = Number(process.env.PORT) || 3001;
 const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/resumeai";
 
-app.use(
-  cors({
-    origin: true,
-    methods: ["GET", "POST", "OPTIONS", "DELETE"],
-  })
-);
+/** Comma-separated browser origins (e.g. https://your-app.vercel.app). Required for cross-origin auth in production. */
+const clientOrigins = (process.env.CLIENT_ORIGIN ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const corsOptions: CorsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    if (clientOrigins.length === 0) {
+      callback(null, true);
+      return;
+    }
+    if (clientOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    console.warn("[CORS] blocked origin:", origin);
+    callback(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET", "POST", "OPTIONS", "DELETE", "PUT", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
+  maxAge: 86_400,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
 app.use("/api/auth", authRouter);
@@ -56,7 +81,9 @@ async function start() {
 
   app.listen(port, "0.0.0.0", () => {
     console.log(
-      `API listening on http://localhost:${port} and http://127.0.0.1:${port} (CORS: reflect Origin)`
+      `API listening on port ${port} (CORS: ${
+        clientOrigins.length ? clientOrigins.join(", ") : "reflect request Origin"
+      })`
     );
   });
 }
