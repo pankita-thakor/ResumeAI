@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { apiUrl } from '../services/apiBase';
@@ -25,7 +26,7 @@ const Signup: React.FC = () => {
       });
       signup(res.data.token, res.data.user);
       showNotification('Account created successfully!', 'success');
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: any) {
       showNotification(err.response?.data?.error || 'Signup failed', 'error');
     }
@@ -33,6 +34,10 @@ const Signup: React.FC = () => {
 
   return (
     <div className="auth-container">
+      <Link to="/" className="auth-logo">
+        <Sparkles className="logo-icon" size={32} />
+        <span className="logo-text">ResumeAI</span>
+      </Link>
       <form onSubmit={handleSubmit} className="auth-form">
         <h2>Signup for ResumeAI</h2>
         <div className="form-group">
@@ -50,6 +55,7 @@ const Signup: React.FC = () => {
         <button type="submit">Signup</button>
         <p>Already have an account? <Link to="/login">Login</Link></p>
       </form>
+      <Link to="/" className="back-to-home">← Back to Home</Link>
     </div>
   );
 };

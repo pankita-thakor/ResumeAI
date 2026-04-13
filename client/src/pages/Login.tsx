@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { apiUrl } from '../services/apiBase';
@@ -18,7 +19,7 @@ const Login: React.FC = () => {
       const res = await axios.post(apiUrl('/api/auth/login'), { email, password });
       login(res.data.token, res.data.user);
       showNotification('Successfully logged in!', 'success');
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: any) {
       showNotification(err.response?.data?.error || 'Login failed', 'error');
     }
@@ -26,6 +27,10 @@ const Login: React.FC = () => {
 
   return (
     <div className="auth-container">
+      <Link to="/" className="auth-logo">
+        <Sparkles className="logo-icon" size={32} />
+        <span className="logo-text">ResumeAI</span>
+      </Link>
       <form onSubmit={handleSubmit} className="auth-form">
         <h2>Login to ResumeAI</h2>
         <div className="form-group">
@@ -42,6 +47,7 @@ const Login: React.FC = () => {
         <button type="submit">Login</button>
         <p>Don't have an account? <Link to="/signup">Signup</Link></p>
       </form>
+      <Link to="/" className="back-to-home">← Back to Home</Link>
     </div>
   );
 };
