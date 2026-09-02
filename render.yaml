@@ -1,0 +1,47 @@
+# Render blueprint for the ResumeAI API (the client stays on Vercel).
+#
+# Setup: Render dashboard → New → Blueprint → pick this repo. Render reads this file, then
+# prompts for every `sync: false` value below. JWT_SECRET is generated for you.
+services:
+  - type: web
+    name: resumeai-api
+    runtime: node
+    plan: free
+    # Root install so npm workspaces resolve, then compile server/src → server/dist.
+    buildCommand: npm install && npm run build -w server
+    startCommand: npm run start -w server
+    # Render assigns PORT; the server already reads it and binds 0.0.0.0.
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_ORIGIN
+        value: https://resume-ai-seven-swart.vercel.app
+      - key: CLIENT_URL
+        value: https://resume-ai-seven-swart.vercel.app
+      # Prompted on first deploy:
+      - key: MONGODB_URI          # Atlas SRV string; allow 0.0.0.0/0 in Atlas Network Access
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX
+        sync: false
+      - key: PINECONE_VECTOR_DIMENSION
+        sync: false
+      # Password reset email — see server/.env.example for free provider setups.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false

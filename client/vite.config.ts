@@ -33,6 +33,8 @@ function apiProxyTarget(): string {
   return "http://127.0.0.1:3001";
 }
 
+const proxyTarget = apiProxyTarget();
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -41,10 +43,38 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: apiProxyTarget(),
+        target: proxyTarget,
         changeOrigin: true,
         timeout: 600_000,
         proxyTimeout: 600_000,
+        /**
+         * Without this, an API that isn't running makes the proxy answer with a bare
+         * `500 Internal Server Error` and an empty body — which reads like a server-side
+         * crash in the app. Reply with JSON the UI can actually display instead.
+         */
+        configure(proxy) {
+          proxy.on("error", (err, _req, res) => {
+            const message =
+              `Dev proxy could not reach the API at ${proxyTarget}. ` +
+              "Start it with `npm run dev` from the repo root (both client and server), " +
+              "or `npm run dev:server` for the API alone. " +
+              `If the API uses a different port, set PORT in server/.env. (${err.message})`;
+
+            console.error(`\n[vite proxy] ${message}\n`);
+
+            // `res` is a ServerResponse for normal requests, a raw Socket for ws upgrades.
+            if ("writeHead" in res) {
+              if (res.headersSent) {
+                res.end();
+                return;
+              }
+              res.writeHead(502, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: message }));
+              return;
+            }
+            res.destroy();
+          });
+        },
       },
     },
   },

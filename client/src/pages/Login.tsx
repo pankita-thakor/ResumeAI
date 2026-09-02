@@ -5,6 +5,7 @@ import { Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { apiUrl } from '../services/apiBase';
+import PasswordInput from '../components/PasswordInput';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -21,7 +22,10 @@ const Login: React.FC = () => {
       showNotification('Successfully logged in!', 'success');
       navigate('/dashboard');
     } catch (err: any) {
-      showNotification(err.response?.data?.error || 'Login failed', 'error');
+      showNotification(
+        err.response?.data?.error || err.message || 'Login failed',
+        'error'
+      );
     }
   };
 
@@ -34,12 +38,24 @@ const Login: React.FC = () => {
       <form onSubmit={handleSubmit} className="auth-form">
         <h2>Login to ResumeAI</h2>
         <div className="form-group">
-          <label>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <label htmlFor="login-email">Email</label>
+          <input
+            id="login-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
         </div>
         <div className="form-group">
-          <label>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <label htmlFor="login-password">Password</label>
+          <PasswordInput
+            id="login-password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+          />
         </div>
         <div style={{ textAlign: 'right', marginTop: '-10px', marginBottom: '10px' }}>
           <Link to="/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>Forgot Password?</Link>

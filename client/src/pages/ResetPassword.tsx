@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
+import { apiUrl } from '../services/apiBase';
+import PasswordInput from '../components/PasswordInput';
 
 const ResetPassword: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -11,8 +13,6 @@ const ResetPassword: React.FC = () => {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
 
-  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
@@ -21,11 +21,14 @@ const ResetPassword: React.FC = () => {
     }
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/auth/reset-password/${token}`, { password });
+      await axios.post(apiUrl(`/api/auth/reset-password/${token}`), { password });
       showNotification('Password reset successfully!', 'success');
       navigate('/login');
     } catch (err: any) {
-      showNotification(err.response?.data?.error || 'Failed to reset password', 'error');
+      showNotification(
+        err.response?.data?.error || err.message || 'Failed to reset password',
+        'error'
+      );
     } finally {
       setLoading(false);
     }
@@ -36,23 +39,25 @@ const ResetPassword: React.FC = () => {
       <form onSubmit={handleSubmit} className="auth-form">
         <h2>Set New Password</h2>
         <div className="form-group">
-          <label>New Password</label>
-          <input 
-            type="password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            required 
+          <label htmlFor="reset-password">New Password</label>
+          <PasswordInput
+            id="reset-password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
             placeholder="Min 6 characters"
+            minLength={6}
           />
         </div>
         <div className="form-group">
-          <label>Confirm Password</label>
-          <input 
-            type="password" 
-            value={confirmPassword} 
-            onChange={(e) => setConfirmPassword(e.target.value)} 
-            required 
+          <label htmlFor="reset-confirm-password">Confirm Password</label>
+          <PasswordInput
+            id="reset-confirm-password"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            autoComplete="new-password"
             placeholder="Confirm new password"
+            minLength={6}
           />
         </div>
         <button type="submit" disabled={loading}>

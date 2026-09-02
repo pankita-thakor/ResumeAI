@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { User } from "../models/User.js";
 import { auth, type AuthRequest } from "../middleware/auth.js";
+import { jwtSecret } from "../utils/jwtSecret.js";
+import { sendPasswordResetEmail } from "../services/mailer.js";
 
 export const authRouter = Router();
 
@@ -46,20 +48,17 @@ authRouter.post("/signup", async (req, res, next) => {
       throw saveErr;
     }
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "default_secret",
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ id: user._id }, jwtSecret(), { expiresIn: "7d" });
 
     res.status(201).json({ 
       user: { email: user.email, id: user._id, resumes: [] }, 
       token 
     });
   } catch (err) {
+    // Detail stays in the server log; driver/connection errors must not reach the browser.
+    // To diagnose a deploy, check the API logs and GET /api/health.
     console.error("[Signup Error]", err);
-    // Return the actual error message to help debug
-    res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error during signup" });
+    res.status(500).json({ error: "Internal server error during signup" });
   }
 });
 
@@ -85,11 +84,7 @@ authRouter.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "Invalid login credentials" });
     }
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "default_secret",
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ id: user._id }, jwtSecret(), { expiresIn: "7d" });
 
     res.json({ 
       user: { email: user.email, id: user._id, resumes: user.resumes }, 
@@ -97,7 +92,7 @@ authRouter.post("/login", async (req, res, next) => {
     });
   } catch (err) {
     console.error("[Login Error]", err);
-    res.status(500).json({ error: err instanceof Error ? err.message : "Internal server error during login" });
+    res.status(500).json({ error: "Internal server error during login" });
   }
 });
 
@@ -120,23 +115,33 @@ authRouter.post("/forgot-password", async (req, res) => {
       return res.status(400).json({ error: "Email is required" });
     }
 
+    // Same response whether or not the account exists, so this cannot be used to
+    // enumerate registered addresses.
+    const genericMessage =
+      "If that email is registered, a password reset link has been sent.";
+
     const user = await User.findOne({ email });
     if (!user) {
-      // For security, don't confirm if user exists or not
-      return res.json({ message: "If that email exists, a reset link has been sent (check console for link)" });
+      return res.json({ message: genericMessage });
     }
 
-    const token = crypto.randomBytes(20).toString("hex");
+    const token = crypto.randomBytes(32).toString("hex");
     user.resetPasswordToken = token;
     user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
 
     await user.save();
 
-    // In a real app, send an email. For this demo, we log it.
-    const resetUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password/${token}`;
-    console.log(`[PASSWORD RESET LINK]: ${resetUrl}`);
+    const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(
+      /\/$/,
+      ""
+    );
+    const resetUrl = `${clientUrl}/reset-password/${token}`;
 
-    res.json({ message: "If that email exists, a reset link has been sent (check console for link)" });
+    // Logs the link only when SMTP is unconfigured (local dev); never on a failure path
+    // that would 500 and thereby reveal that the address exists.
+    await sendPasswordResetEmail(user.email!, resetUrl);
+
+    res.json({ message: genericMessage });
   } catch (err) {
     console.error("[Forgot Password Error]", err);
     res.status(500).json({ error: "Internal server error" });

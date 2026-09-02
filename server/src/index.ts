@@ -7,6 +7,8 @@ import { resumeRouter } from "./routes/resume.js";
 import { systemRouter } from "./routes/system.js";
 import { authRouter } from "./routes/auth.js";
 import { chatRouter } from "./routes/chat.js";
+import { assertJwtSecret } from "./utils/jwtSecret.js";
+import { verifyMailer } from "./services/mailer.js";
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
@@ -17,6 +19,14 @@ const clientOrigins = (process.env.CLIENT_ORIGIN ?? "")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
+
+/** Marker so a disallowed Origin answers 403, not a 500 that reads like a server crash. */
+class CorsRejection extends Error {
+  constructor(origin: string) {
+    super(`Origin ${origin} is not in CLIENT_ORIGIN`);
+    this.name = "CorsRejection";
+  }
+}
 
 const corsOptions: CorsOptions = {
   origin(origin, callback) {
@@ -33,7 +43,7 @@ const corsOptions: CorsOptions = {
       return;
     }
     console.warn("[CORS] blocked origin:", origin);
-    callback(new Error("Not allowed by CORS"));
+    callback(new CorsRejection(origin));
   },
   methods: ["GET", "POST", "OPTIONS", "DELETE", "PUT", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -58,8 +68,14 @@ app.use(
     res: Response,
     _next: NextFunction
   ) => {
-    console.error("[API error]", err);
     if (res.headersSent) return;
+
+    if (err instanceof CorsRejection) {
+      res.status(403).json({ error: "Origin not allowed" });
+      return;
+    }
+
+    console.error("[API error]", err);
     const message =
       err instanceof Error ? err.message : "Internal server error";
     res.status(500).json({ error: message });
@@ -67,6 +83,9 @@ app.use(
 );
 
 async function start() {
+  // Surface a misconfigured deploy at boot rather than on the first login attempt.
+  assertJwtSecret();
+
   try {
     await mongoose.connect(mongoUri);
     console.log("Connected to MongoDB");
@@ -77,6 +96,9 @@ async function start() {
     );
     process.exit(1);
   }
+
+  // Non-blocking: a bad SMTP setup should be visible in the logs, not stop the API booting.
+  void verifyMailer();
 
   app.listen(port, "0.0.0.0", () => {
     console.log(
