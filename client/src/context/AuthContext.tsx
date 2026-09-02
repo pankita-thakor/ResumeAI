@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { http } from '../services/http';
 import { apiUrl } from '../services/apiBase';
 
 interface User {
@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchMe = async () => {
     if (token) {
       try {
-        const res = await axios.get(apiUrl('/api/auth/me'), {
+        const res = await http.get(apiUrl('/api/auth/me'), {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data.user);

@@ -19,8 +19,11 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      # Production origin, plus a wildcard for Vercel preview deployments (their hostname
+      # changes on every push, so they cannot be listed individually). `*` matches one
+      # hostname label only — it never spans a dot.
       - key: CLIENT_ORIGIN
-        value: https://resume-ai-seven-swart.vercel.app
+        value: https://resume-ai-seven-swart.vercel.app,https://*-pankitathakor-4970s-projects.vercel.app
       - key: CLIENT_URL
         value: https://resume-ai-seven-swart.vercel.app
       # Prompted on first deploy:

@@ -1,38 +1,43 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import { Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { apiUrl } from '../services/apiBase';
+import { http, describeRequestError } from '../services/http';
 import PasswordInput from '../components/PasswordInput';
 
 const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (password !== confirmPassword) {
       return showNotification('Passwords do not match', 'error');
     }
+    setLoading(true);
     try {
-      const res = await axios.post(apiUrl('/api/auth/signup'), {
+      const res = await http.post(apiUrl('/api/auth/signup'), {
         email: email.trim().toLowerCase(),
         password,
       });
+      if (!res.data?.token) {
+        throw new Error('The server responded without a token — check the API logs.');
+      }
       signup(res.data.token, res.data.user);
       showNotification('Account created successfully!', 'success');
       navigate('/dashboard');
-    } catch (err: any) {
-      showNotification(
-        err.response?.data?.error || err.message || 'Signup failed',
-        'error'
-      );
+    } catch (err) {
+      showNotification(describeRequestError(err), 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,7 +82,9 @@ const Signup: React.FC = () => {
             minLength={6}
           />
         </div>
-        <button type="submit">Signup</button>
+        <button type="submit" disabled={loading}>
+          {loading ? 'Creating account…' : 'Signup'}
+        </button>
         <p>Already have an account? <Link to="/login">Login</Link></p>
       </form>
       <Link to="/" className="back-to-home">← Back to Home</Link>

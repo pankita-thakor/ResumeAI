@@ -26,6 +26,13 @@ export type AskResponse = {
 export type AskError = { error: string };
 import { apiUrl } from "./apiBase";
 
+/**
+ * Indexing and Q&A chain several Gemini + Pinecone calls with retry backoff, so these are
+ * legitimately slow — but not unbounded. Without a cap, a backend that accepts the
+ * connection and never answers leaves the UI spinning forever with no error.
+ */
+const REQUEST_TIMEOUT_MS = 180_000;
+
 async function apiFetch(url: string, init: RequestInit): Promise<Response> {
   const token = localStorage.getItem('token');
   const headers = {
@@ -33,13 +40,25 @@ async function apiFetch(url: string, init: RequestInit): Promise<Response> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   try {
-    return await fetch(url, { ...init, headers });
+    return await fetch(url, { ...init, headers, signal: controller.signal });
   } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error(
+        `The server did not respond within ${Math.round(
+          REQUEST_TIMEOUT_MS / 1000
+        )}s. It may be starting up or overloaded — check the API logs and /api/health.`
+      );
+    }
     const detail = e instanceof Error ? e.message : "Network error";
     throw new Error(
       `${detail} — Is the API running? From the project root run \`npm run dev\` (starts client + server on port 3001). If the API uses another port, set VITE_API_URL in client/.env`
     );
+  } finally {
+    clearTimeout(timer);
   }
 }
 

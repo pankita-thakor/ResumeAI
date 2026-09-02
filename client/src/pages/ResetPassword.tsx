@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { http, describeRequestError } from '../services/http';
 import { useNotification } from '../context/NotificationContext';
 import { apiUrl } from '../services/apiBase';
 import PasswordInput from '../components/PasswordInput';
@@ -21,14 +21,11 @@ const ResetPassword: React.FC = () => {
     }
     setLoading(true);
     try {
-      await axios.post(apiUrl(`/api/auth/reset-password/${token}`), { password });
+      await http.post(apiUrl(`/api/auth/reset-password/${token}`), { password });
       showNotification('Password reset successfully!', 'success');
       navigate('/login');
-    } catch (err: any) {
-      showNotification(
-        err.response?.data?.error || err.message || 'Failed to reset password',
-        'error'
-      );
+    } catch (err) {
+      showNotification(describeRequestError(err), 'error');
     } finally {
       setLoading(false);
     }
