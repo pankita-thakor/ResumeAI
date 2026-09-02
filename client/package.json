@@ -20,5 +20,10 @@
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
     "vite": "^6.0.3"
+  },
+  "//optionalDependencies": "Rollup ships its native binary as a per-platform optional dep, and npm records only the host platform's in package-lock.json (npm/cli#4828). A lockfile generated on Windows therefore breaks Linux CI with 'Cannot find module @rollup/rollup-linux-x64-gnu'. Declaring the Linux binaries explicitly puts them in the lock; npm skips them on other platforms because each declares its own os/cpu.",
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.60.0",
+    "@rollup/rollup-linux-x64-musl": "4.60.0"
   }
 }
