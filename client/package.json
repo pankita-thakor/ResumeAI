@@ -5,10 +5,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "//vercel-build": "Vercel's Root Directory is the client workspace, so it runs `npm run --workspace=client vercel-build` from client/. Hop back to the repo root and drive the real build from there: the server workspace and the root dependencies must be installed and compiled too, and a client-scoped `npm install` skips both.",
-    "vercel-build": "cd .. && npm run install:all && npm run build"
+    "preview": "vite preview"
   },
+  "//vercel": "Deliberately no `vercel-build` here. Vercel's Root Directory for this project is the repo root, so the deploy is driven by the root package.json and vercel.json — those are the only place the build is described. A `vercel-build` in this workspace would silently paper over a Root Directory pointed at `client/`, which cannot work: `api/index.mjs` lives outside that directory and would never deploy as a function.",
   "dependencies": {
     "axios": "^1.14.0",
     "lucide-react": "^1.7.0",

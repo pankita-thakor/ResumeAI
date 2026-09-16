@@ -1,10 +1,10 @@
 /**
  * Mirrors the client build into a repo-root `dist/`.
  *
- * Vercel resolves the Output Directory against whichever directory it decided the project
- * lives in, and this repo's deploy has it pointed at the root while the build itself runs
- * scoped to the `client` workspace — so a single `client/dist` satisfies one reading of the
- * config and not the other ("No Output Directory named \"dist\" found").
+ * Vercel resolves `vercel.json`'s `outputDirectory` against the project's Root Directory,
+ * which for this deploy is the repo root — but Vite writes to `client/dist`, scoped to the
+ * workspace it builds. Staging a copy at the root is what makes `"outputDirectory": "dist"`
+ * resolve to something that exists ("No Output Directory named \"dist\" found" otherwise).
  *
  * Copying rather than moving keeps `client/dist` intact, so `npm run preview -w client` and
  * any local tooling that expects the Vite default still work.
