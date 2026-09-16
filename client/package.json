@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "//vercel-build": "Vercel's Root Directory is the client workspace, so it runs `npm run --workspace=client vercel-build` from client/. Hop back to the repo root and drive the real build from there: the server workspace and the root dependencies must be installed and compiled too, and a client-scoped `npm install` skips both.",
+    "vercel-build": "cd .. && npm run install:all && npm run build"
   },
   "dependencies": {
     "axios": "^1.14.0",
