@@ -13,6 +13,9 @@
     "reset-db": "npm run reset-db -w server --",
     "reset-db:force": "npm run reset-db -w server -- --yes"
   },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "devDependencies": {
     "concurrently": "^9.1.0"
   },
