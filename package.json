@@ -10,6 +10,8 @@
     "dev:client": "npm run dev -w client",
     "dev:server": "npm run dev -w server",
     "build": "npm run build -w client && npm run build -w server",
+    "vercel-build": "npm run install:all && npm run build",
+    "install:all": "npm install --include-workspace-root --workspaces --no-audit --no-fund",
     "reset-db": "npm run reset-db -w server --",
     "reset-db:force": "npm run reset-db -w server -- --yes"
   },
