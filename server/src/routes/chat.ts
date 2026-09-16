@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Response, NextFunction } from "express";
 import { GoogleGenAI, type Content } from "@google/genai";
-import { auth, type AuthRequest } from "../middleware/auth.js";
+import { session, type SessionRequest } from "../middleware/session.js";
 import {
   resolveChatModelChain,
   shouldTryNextChatModel,
@@ -11,10 +11,10 @@ import {
 export const chatRouter = Router();
 
 function asyncRoute(
-  handler: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>
+  handler: (req: SessionRequest, res: Response, next: NextFunction) => Promise<void>
 ) {
   return (req: any, res: Response, next: NextFunction) => {
-    void handler(req as AuthRequest, res, next).catch(next);
+    void handler(req as SessionRequest, res, next).catch(next);
   };
 }
 
@@ -24,10 +24,10 @@ function asyncRoute(
  */
 chatRouter.post(
   "/",
-  auth,
+  session,
   asyncRoute(async (req, res, next) => {
     const { message } = req.body;
-    const user = req.user;
+    const visitor = req.session;
 
     if (!message) {
       res.status(400).json({ error: "Message is required." });
@@ -41,7 +41,7 @@ chatRouter.post(
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const resumeNames = user.resumes.map((r: any) => r.name).join(", ");
+    const resumeNames = visitor.resumes.map((r: any) => r.name).join(", ");
     
     // System Instruction
     const systemInstruction = `You are the ResumeAI Smart Assistant. 
@@ -50,13 +50,13 @@ chatRouter.post(
     If the user asks to list their resumes, use this list.
     If they ask about a specific candidate, help them find the right resume.
     
-    Context from previous sessions: ${user.chatSummary || "No previous history."}
+    Context from previous sessions: ${visitor.chatSummary || "No previous history."}
     
     Be professional, helpful, and concise.`;
 
     // Construct contents for Gemini
     // We'll use the chatHistory + new message
-    const history = user.chatHistory.map((h: any) => ({
+    const history = visitor.chatHistory.map((h: any) => ({
       role: h.role === "user" ? "user" : "model",
       parts: [{ text: h.content }],
     }));
@@ -97,15 +97,15 @@ chatRouter.post(
     }
 
     // Update history
-    user.chatHistory.push({ role: "user", content: message });
-    user.chatHistory.push({ role: "assistant", content: responseText });
-    
+    visitor.chatHistory.push({ role: "user", content: message });
+    visitor.chatHistory.push({ role: "assistant", content: responseText });
+
     // Keep only last 20 messages in active history to avoid prompt bloating
-    if (user.chatHistory.length > 20) {
-      user.chatHistory = user.chatHistory.slice(-20);
+    if (visitor.chatHistory.length > 20) {
+      visitor.chatHistory = visitor.chatHistory.slice(-20);
     }
 
-    await user.save();
+    await visitor.save();
 
     res.json({ answer: responseText });
   })
@@ -113,14 +113,14 @@ chatRouter.post(
 
 /**
  * POST /api/chat/summarize — Clear current history and update summary.
- * Useful on logout or manual "New Session".
+ * Useful for a manual "New Session".
  */
 chatRouter.post(
   "/summarize",
-  auth,
+  session,
   asyncRoute(async (req, res, next) => {
-    const user = req.user;
-    if (user.chatHistory.length === 0) {
+    const visitor = req.session;
+    if (visitor.chatHistory.length === 0) {
       res.json({ success: true, message: "No history to summarize." });
       return;
     }
@@ -132,7 +132,7 @@ chatRouter.post(
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const fullHistory = user.chatHistory
+    const fullHistory = visitor.chatHistory
       .map((h: any) => `${h.role}: ${h.content}`)
       .join("\n");
 
@@ -161,9 +161,9 @@ chatRouter.post(
       }
       if (!summary) throw lastErr ?? new Error("Summarization failed.");
 
-      user.chatSummary = summary;
-      user.chatHistory = []; // Clear detailed history
-      await user.save();
+      visitor.chatSummary = summary;
+      visitor.chatHistory = []; // Clear detailed history
+      await visitor.save();
 
       res.json({ success: true, summary });
     } catch (err) {
@@ -177,11 +177,11 @@ chatRouter.post(
  */
 chatRouter.get(
   "/history",
-  auth,
+  session,
   asyncRoute(async (req, res, next) => {
     res.json({
-      history: req.user.chatHistory,
-      summary: req.user.chatSummary,
+      history: req.session.chatHistory,
+      summary: req.session.chatSummary,
     });
   })
 );

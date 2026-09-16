@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   askResume,
   askResumeById,
@@ -6,16 +7,17 @@ import {
   indexResumePdf,
   indexResumeText,
   deleteResume,
+  getResumes,
   type AskMeta,
+  type StoredResume,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
-import { LogOut, FileText, Plus, Trash2 } from "lucide-react";
+import { Home, FileText, Plus, Trash2 } from "lucide-react";
 import ChatWidget from "../components/ChatWidget";
 
 export default function Dashboard() {
-  const { user, logout, refreshUser } = useAuth();
   const { showNotification } = useNotification();
+  const [resumes, setResumes] = useState<StoredResume[]>([]);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [resumeText, setResumeText] = useState("");
   const [resumePdf, setResumePdf] = useState<File | null>(null);
@@ -32,6 +34,19 @@ export default function Dashboard() {
     name: string;
   } | null>(null);
   const [deleteWorking, setDeleteWorking] = useState(false);
+
+  /** The library lives on the server, keyed by this browser's session id. */
+  async function refreshResumes() {
+    try {
+      setResumes(await getResumes());
+    } catch (err) {
+      console.error("Failed to load resumes", err);
+    }
+  }
+
+  useEffect(() => {
+    void refreshResumes();
+  }, []);
 
   function clearIndexedState() {
     setResumeIndexedId(null);
@@ -67,6 +82,7 @@ export default function Dashboard() {
         `Ready: ${out.segmentCount} segments stored in Pinecone (${out.embeddingModel}).`
       );
       showNotification('PDF indexed successfully!', 'success');
+      await refreshResumes();
     } catch (err) {
       setIndexNote(null);
       const msg = err instanceof Error ? err.message : "Could not index PDF";
@@ -108,6 +124,7 @@ export default function Dashboard() {
             `Ready: ${out.segmentCount} segments in Pinecone (${out.embeddingModel}).`
           );
           showNotification('Resume indexed!', 'success');
+          await refreshResumes();
         } catch {
           setBlockingMsg("Generating answer from full resume (index unavailable)…");
           const res = await askResume(resumeText.trim(), question.trim());
@@ -154,7 +171,7 @@ export default function Dashboard() {
       await deleteResume(pendingDelete.resumeId);
       showNotification("Resume deleted", "success");
       if (resumeIndexedId === pendingDelete.resumeId) clearIndexedState();
-      await refreshUser();
+      await refreshResumes();
       setPendingDelete(null);
     } catch {
       showNotification("Delete failed", "error");
@@ -190,20 +207,20 @@ export default function Dashboard() {
             <div>
               <h1>Resume AI</h1>
               <p className="header-tagline">
-                Logged in as {user?.email}
+                Ask questions about any resume — no account needed
               </p>
             </div>
           </div>
-          <button onClick={logout} className="logout-btn">
-            <LogOut size={18} /> Logout
-          </button>
+          <Link to="/" className="logout-btn">
+            <Home size={18} /> Home
+          </Link>
         </header>
 
         <main className="main">
           <div className="sidebar">
             <h3>Your Resumes</h3>
             <div className="resume-list">
-              {user?.resumes.map((r) => (
+              {resumes.map((r) => (
                 <div
                   key={r.resumeId}
                   className={`resume-item ${

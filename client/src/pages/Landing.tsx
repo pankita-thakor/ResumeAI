@@ -44,14 +44,12 @@ const Landing: React.FC = () => {
             <a href="#how-it-works" onClick={() => setIsMenuOpen(false)}>How it Works</a>
             <a href="#about" onClick={() => setIsMenuOpen(false)}>About</a>
             <div className="mobile-only-actions">
-              <Link to="/login" className="btn btn-ghost" onClick={() => setIsMenuOpen(false)}>Login</Link>
-              <Link to="/signup" className="btn btn-primary" onClick={() => setIsMenuOpen(false)}>Sign Up Free</Link>
+              <Link to="/dashboard" className="btn btn-primary" onClick={() => setIsMenuOpen(false)}>Open App</Link>
             </div>
           </nav>
 
           <div className="header-actions">
-            <Link to="/login" className="btn btn-ghost">Login</Link>
-            <Link to="/signup" className="btn btn-primary">Sign Up Free</Link>
+            <Link to="/dashboard" className="btn btn-primary">Open App</Link>
           </div>
 
           <button className="menu-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
@@ -71,7 +69,7 @@ const Landing: React.FC = () => {
             <h1>Unlock Your Career with <span className="highlight">AI Insights</span></h1>
             <p>Don't just apply. Master your career path with our intelligent resume engine. Get instant feedback, optimization tips, and real-time QA.</p>
             <div className="hero-btns">
-              <Link to="/signup" className="btn btn-primary btn-large">
+              <Link to="/dashboard" className="btn btn-primary btn-large">
                 Get Started Free <ArrowRight size={20} />
               </Link>
               <a href="#features" className="btn btn-ghost btn-large">
@@ -83,7 +81,7 @@ const Landing: React.FC = () => {
                 <CheckCircle2 size={16} color="#10b981"/> 100% Secure
               </div>
               <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                <CheckCircle2 size={16} color="#10b981"/> No Credit Card Required
+                <CheckCircle2 size={16} color="#10b981"/> No Sign-up Required
               </div>
             </div>
           </div>
@@ -222,12 +220,12 @@ const Landing: React.FC = () => {
               <p>Join over 10,000+ professionals who have optimized their careers with ResumeAI.</p>
               
               <div style={{display: 'flex', gap: '1.5rem', marginBottom: '3rem'}}>
-                <Link to="/signup" className="btn btn-primary btn-large">
-                  Create Free Account
+                <Link to="/dashboard" className="btn btn-primary btn-large">
+                  Start Analyzing
                 </Link>
-                <Link to="/login" className="btn btn-ghost btn-large" style={{color: 'white', border: '1px solid rgba(255,255,255,0.2)'}}>
-                  Sign In
-                </Link>
+                <a href="#features" className="btn btn-ghost btn-large" style={{color: 'white', border: '1px solid rgba(255,255,255,0.2)'}}>
+                  Explore Features
+                </a>
               </div>
 
               <div className="cta-stats">
@@ -276,7 +274,7 @@ const Landing: React.FC = () => {
               <h4>Product</h4>
               <a href="#features">Features</a>
               <a href="#how-it-works">How it Works</a>
-              <Link to="/login">Login</Link>
+              <Link to="/dashboard">Open App</Link>
             </div>
             <div className="footer-links">
               <h4>Company</h4>

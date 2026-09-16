@@ -1,8 +1,14 @@
 /**
- * Build an absolute API URL.
+ * Build an API URL.
  *
- * `VITE_API_URL` is inlined at build time, so it must live in `client/.env` (or the host's
- * build environment variables) — a value in `server/.env` is never seen by the Vite build.
+ * The default is a relative path, i.e. the API is expected on the same origin as the app.
+ * That is how the Vercel deploy works: `api/index.mjs` serves the Express app under `/api`
+ * in the same project, so there is no second host to point at and nothing to configure.
+ *
+ * `VITE_API_URL` overrides that with an absolute origin, for the case where the API is
+ * hosted separately (e.g. Render). It is inlined at build time, so it must live in
+ * `client/.env` or the hosting project's environment variables — a value in `server/.env`
+ * is never seen by the Vite build — and changing it requires a redeploy, not just a restart.
  */
 export function apiUrl(path: string): string {
   const trimmed = path.startsWith("/") ? path : `/${path}`;
@@ -10,13 +16,6 @@ export function apiUrl(path: string): string {
   if (fromEnv) return `${fromEnv.replace(/\/$/, "")}${trimmed}`;
 
   // Dev: vite.config.ts proxies /api to the local API process.
-  if (import.meta.env.DEV) return trimmed;
-
-  // Production build with no API origin: a relative /api request is answered by the static
-  // host (the SPA's index.html or a 404), which surfaces as a confusing "not JSON" failure.
-  throw new Error(
-    "VITE_API_URL is not set in this build. Set it to the API origin (e.g. " +
-      "https://your-api-host.onrender.com) in the hosting project's environment variables, " +
-      "then redeploy."
-  );
+  // Prod: the platform routes /api to the serverless function alongside the static build.
+  return trimmed;
 }

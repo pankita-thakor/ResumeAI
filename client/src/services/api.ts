@@ -24,7 +24,14 @@ export type AskResponse = {
 };
 
 export type AskError = { error: string };
+
+export type StoredResume = {
+  resumeId: string;
+  name: string;
+  uploadedAt: string;
+};
 import { apiUrl } from "./apiBase";
+import { getSessionId } from "./session";
 
 /**
  * Indexing and Q&A chain several Gemini + Pinecone calls with retry backoff, so these are
@@ -34,10 +41,9 @@ import { apiUrl } from "./apiBase";
 const REQUEST_TIMEOUT_MS = 180_000;
 
 async function apiFetch(url: string, init: RequestInit): Promise<Response> {
-  const token = localStorage.getItem('token');
   const headers = {
     ...init.headers,
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'X-Session-Id': getSessionId(),
   };
 
   const controller = new AbortController();
@@ -188,6 +194,17 @@ export async function askResumeById(
     body: JSON.stringify({ resumeId, question }),
   });
   return parseAskResponse(res);
+}
+
+/** This browser's indexed resumes. Creates the session server-side on first call. */
+export async function getResumes(): Promise<StoredResume[]> {
+  const res = await apiFetch(apiUrl("/api/session/me"), { method: "GET" });
+  if (!res.ok) {
+    const data = (await res.json()) as { error?: string };
+    throw new Error(data.error || "Could not load your resumes");
+  }
+  const data = (await res.json()) as { resumes?: StoredResume[] };
+  return data.resumes ?? [];
 }
 
 export async function deleteResume(resumeId: string): Promise<void> {

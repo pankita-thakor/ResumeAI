@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { answerFromResume } from "../services/resumeQA.js";
 import { extractTextFromPdf } from "../services/pdfText.js";
-import { auth, type AuthRequest } from "../middleware/auth.js";
+import { session, type SessionRequest } from "../middleware/session.js";
 
 export const askRouter = Router();
 
@@ -25,16 +25,16 @@ const upload = multer({
 });
 
 function asyncRoute(
-  handler: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>
+  handler: (req: SessionRequest, res: Response, next: NextFunction) => Promise<void>
 ) {
   return (req: Request, res: Response, next: NextFunction) => {
-    void handler(req as AuthRequest, res, next).catch(next);
+    void handler(req as SessionRequest, res, next).catch(next);
   };
 }
 
 askRouter.post(
   "/ask",
-  auth,
+  session,
   asyncRoute(async (req, res, next) => {
     const body = req.body as {
       resumeText?: string;
@@ -63,7 +63,7 @@ askRouter.post(
         const { answer, meta } = await answerFromResume({
           resumeId,
           question,
-          userLibrary: req.user.resumes.map((r: any) => ({ name: r.name })),
+          userLibrary: req.session.resumes.map((r: any) => ({ name: r.name })),
         });
         res.json({ answer, meta });
       } catch (err) {
@@ -83,7 +83,7 @@ askRouter.post(
       const { answer, meta } = await answerFromResume({
         resumeText,
         question,
-        userLibrary: req.user.resumes.map((r: any) => ({ name: r.name })),
+        userLibrary: req.session.resumes.map((r: any) => ({ name: r.name })),
       });
       res.json({ answer, meta });
     } catch (err) {
@@ -94,7 +94,7 @@ askRouter.post(
 
 askRouter.post(
   "/ask-pdf",
-  auth,
+  session,
   (req, res, next) => {
     upload.single("resumePdf")(req, res, (err: unknown) => {
       if (err instanceof multer.MulterError) {
@@ -138,7 +138,7 @@ askRouter.post(
       const { answer, meta } = await answerFromResume({
         resumeText,
         question,
-        userLibrary: req.user.resumes.map((r: any) => ({ name: r.name })),
+        userLibrary: req.session.resumes.map((r: any) => ({ name: r.name })),
       });
       res.json({ answer, meta });
     } catch (err) {

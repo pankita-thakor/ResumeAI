@@ -4,7 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import multer from "multer";
 import { indexResumeToPinecone } from "../services/resumeEmbeddings.js";
 import { extractTextFromPdf } from "../services/pdfText.js";
-import { auth, type AuthRequest } from "../middleware/auth.js";
+import { session, type SessionRequest } from "../middleware/session.js";
 import { Resume } from "../models/Resume.js";
 
 export const resumeRouter = Router();
@@ -27,10 +27,10 @@ const upload = multer({
 });
 
 function asyncRoute(
-  handler: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>
+  handler: (req: SessionRequest, res: Response, next: NextFunction) => Promise<void>
 ) {
   return (req: Request, res: Response, next: NextFunction) => {
-    void handler(req as AuthRequest, res, next).catch(next);
+    void handler(req as SessionRequest, res, next).catch(next);
   };
 }
 
@@ -48,7 +48,7 @@ function requireGemini(): GoogleGenAI {
  */
 resumeRouter.post(
   "/index",
-  auth,
+  session,
   asyncRoute(async (req, res, next) => {
     const resumeText =
       typeof req.body?.resumeText === "string" ? req.body.resumeText : "";
@@ -62,15 +62,17 @@ resumeRouter.post(
     try {
       const ai = requireGemini();
       const out = await indexResumeToPinecone(ai, resumeText);
-      
-      // Save to user
-      const user = req.user;
-      const alreadyExists = user.resumes.some((r: any) => r.resumeId === out.resumeId);
+
+      // Save to this browser's session library
+      const library = req.session;
+      const alreadyExists = library.resumes.some(
+        (r: any) => r.resumeId === out.resumeId
+      );
       if (!alreadyExists) {
-        user.resumes.push({ resumeId: out.resumeId, name });
-        await user.save();
+        library.resumes.push({ resumeId: out.resumeId, name });
+        await library.save();
       }
-      
+
       res.json(out);
     } catch (err) {
       next(err);
@@ -84,7 +86,7 @@ resumeRouter.post(
  */
 resumeRouter.post(
   "/upload-pdf",
-  auth,
+  session,
   (req, res, next) => {
     upload.single("resumePdf")(req, res, (err: unknown) => {
       if (err instanceof multer.MulterError) {
@@ -121,13 +123,15 @@ resumeRouter.post(
       const ai = requireGemini();
       const out = await indexResumeToPinecone(ai, resumeText);
       
-      // Save to user
-      const user = req.user;
+      // Save to this browser's session library
+      const library = req.session;
       const name = file.originalname || "Uploaded PDF";
-      const alreadyExists = user.resumes.some((r: any) => r.resumeId === out.resumeId);
+      const alreadyExists = library.resumes.some(
+        (r: any) => r.resumeId === out.resumeId
+      );
       if (!alreadyExists) {
-        user.resumes.push({ resumeId: out.resumeId, name });
-        await user.save();
+        library.resumes.push({ resumeId: out.resumeId, name });
+        await library.save();
       }
 
       res.json(out);
@@ -138,26 +142,28 @@ resumeRouter.post(
 );
 
 /**
- * DELETE /api/resume/:resumeId — remove from user profile.
+ * DELETE /api/resume/:resumeId — remove from this session's library.
  */
 resumeRouter.delete(
   "/:resumeId",
-  auth,
+  session,
   asyncRoute(async (req, res, next) => {
     const { resumeId } = req.params;
-    const user = req.user;
+    const library = req.session;
 
     try {
-      user.resumes = user.resumes.filter((r: any) => r.resumeId !== resumeId);
-      await user.save();
-      
-      // Cleanup persistent segments if no other user is using this resumeId
-      // (Though resumeId is derived from text, so it might be shared, 
+      library.resumes = library.resumes.filter(
+        (r: any) => r.resumeId !== resumeId
+      );
+      await library.save();
+
+      // Cleanup persistent segments if no other session is using this resumeId
+      // (Though resumeId is derived from text, so it might be shared,
       // but usually resumeId is unique to the file content).
       // For now, let's just delete it to be safe on storage.
       await Resume.deleteOne({ resumeId });
 
-      res.json({ success: true, message: "Resume removed from profile." });
+      res.json({ success: true, message: "Resume removed from library." });
     } catch (err) {
       next(err);
     }

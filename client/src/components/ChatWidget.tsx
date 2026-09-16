@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, Loader2, Bot, RefreshCcw } from 'lucide-react';
 import { sendChatMessage, getChatHistory, summarizeChat } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import './ChatWidget.css';
 
@@ -18,7 +17,6 @@ const ChatWidget: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
   const { showNotification } = useNotification();
 
   const scrollToBottom = () => {
@@ -93,8 +91,6 @@ const ChatWidget: React.FC = () => {
       setIsSummarizing(false);
     }
   };
-
-  if (!user) return null;
 
   return (
     <div className="chat-widget-container">
